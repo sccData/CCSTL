@@ -1,5 +1,6 @@
 #ifndef LIST_H
 #define LIST_H
+#include <Iterator.h>
 namespace CCSTL{
 
     template <class T>
@@ -15,12 +16,13 @@ namespace CCSTL{
     template <class T>
     struct list_iterator {
         typedef list_iterator<T> self;
+        typedef list_node<T>* link_type;
+        typedef size_t size_type;
 
+        typedef bidirectional_iterator_tag iterator_category;
         typedef T value_type;
         typedef T* pointer;
         typedef T& reference;
-        typedef list_node<T>* link_type;
-        typedef size_t size_type;
         typedef ptrdiff_t difference_type;
 
         link_type node;         // 指向list的节点
