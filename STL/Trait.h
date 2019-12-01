@@ -1,5 +1,7 @@
 #ifndef TRAIT_H
 #define TRAIT_H
+#include <cstddef>
+#include "iterator.h"
 namespace CCSTL{
 	template <class Iterator>
 	struct iterator_traits {

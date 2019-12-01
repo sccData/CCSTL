@@ -7,10 +7,10 @@
 
 #include <memory>
 #include <algorithm>
-#include "Iterator.h"
+#include "iterator.h"
 #include <initializer_list>
-#include "Trait.h"
-#include <iostream>
+#include "trait.h"
+
 namespace CCSTL{
     template <class T, class Alloc = std::allocator<T>>
     class vector {
@@ -31,11 +31,11 @@ namespace CCSTL{
         void insert_aux(iterator position, const T& x);
         void deallocate() {
             if(start)
-                a.deallocate(start, end_of_storage-start);
+                alloc.deallocate(start, end_of_storage-start);
         }
         void destroy(iterator start, iterator end) {
             while(start < end)
-                a.destroy(start++);
+                alloc.destroy(start++);
         }
         void fill_initialize(size_type n, const T& value) {
             start = allocate_and_fill(n, value);
@@ -56,8 +56,8 @@ namespace CCSTL{
         vector(size_type n, const T& value) { fill_initialize(n, value); }
         vector(int n, const T& value) { fill_initialize(n, value); }
         vector(long n, const T& value) { fill_initialize(n, value); }
-        vector(std::initializer_list<T> l): start(0), finish(0), end_of_storage(0)
-        { range_initialize(l.begin(), l.end(), iterator_category(l.begin())); }
+        vector(std::initializer_list<T> li): start(0), finish(0), end_of_storage(0)
+        { range_initialize(li.begin(), li.end(), iterator_category(li.begin())); }
         explicit vector(size_type n) { fill_initialize(n, T()); }
 
         template <class InputIterator>
@@ -73,7 +73,7 @@ namespace CCSTL{
 
         void push_back(const T& x) {
             if(finish != end_of_storage) {
-                a.construct(finish, x);
+                alloc.construct(finish, x);
                 ++finish;
             } else
                 insert_aux(end(), x);
@@ -81,11 +81,11 @@ namespace CCSTL{
 
         void pop_back() {
             --finish;
-            a.destroy(finish);
+            alloc.destroy(finish);
         }
 
         iterator erase(iterator first, iterator last) {
-            iterator i = copy(last, finish, first);
+            iterator i = std::copy(last, finish, first);
             destroy(i, finish);
             finish = finish - (last - first);
             return first;
@@ -95,7 +95,7 @@ namespace CCSTL{
             if(position + 1 != end())
                 copy(position + 1, finish, position);
             --finish;
-            a.destroy(finish);
+            alloc.destroy(finish);
             return position;
         }
 
@@ -103,7 +103,7 @@ namespace CCSTL{
         iterator insert(iterator position, const T& x) {
             size_type n = position - begin();
             if(finish != end_of_storage && position == end()) {
-                a.construct(finish, x);
+                alloc.construct(finish, x);
                 ++finish;
             } else 
                 insert_aux(position, x);
@@ -120,16 +120,13 @@ namespace CCSTL{
         void insert(iterator position, int n, const T& x);
     protected:
         iterator allocate_and_fill(size_type n, const T& x) {
-            iterator result = a.allocate(n);
+            iterator result = alloc.allocate(n);
             uninitialized_fill_n(result, n, x);
             return result;
         }
 
         template <class InputIterator>
         void range_initialize(InputIterator first, InputIterator last, input_iterator_tag) {
-            for(auto it=first; it != last; ++it)
-                std::cout << *it << " ";
-            std::cout << std::endl;
             for(; first != last; ++first) {
                 push_back(*first);
             }
@@ -140,7 +137,7 @@ namespace CCSTL{
                           input_iterator_tag);
 
     private:
-        Alloc a;
+        Alloc alloc;
     };
 
     template <class T, class Alloc>
@@ -155,7 +152,7 @@ namespace CCSTL{
         } else { // 无备用空间
             const size_type old_size = size();
             const size_type len = old_size != 0 ? 2*old_size:1;
-            iterator new_start = a.allocate(len);
+            iterator new_start = alloc.allocate(len);
             iterator new_finish = new_start;
             try {
                 new_finish = std::uninitialized_copy(start, position, new_start);
@@ -205,7 +202,7 @@ namespace CCSTL{
             } else {
                 const size_type old_size = size();
                 const size_type len = old_size + max(old_size, n);
-                iterator new_start = a.allocate(len);
+                iterator new_start = alloc.allocate(len);
                 iterator new_finish = new_start;
                 try {
                     new_finish = uninitialized_copy(start, position, new_start);

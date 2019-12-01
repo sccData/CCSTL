@@ -1,6 +1,9 @@
 #ifndef LIST_H
 #define LIST_H
-#include <Iterator.h>
+#include "iterator.h"
+#include "trait.h"
+#include <initializer_list>
+#include <memory>
 namespace CCSTL{
 
     template <class T>
@@ -29,7 +32,7 @@ namespace CCSTL{
 
         list_iterator(link_type ptr = nullptr):node(ptr) {}
         list_iterator() = default;
-        list_iterator(const iterator& x):node(x.node) {}
+        list_iterator(const self& x):node(x.node) {}
 
         bool operator==(const self& x) const { return node == x.node; }
         bool operator!=(const self& x) const { return node != x.node; }
@@ -130,6 +133,10 @@ namespace CCSTL{
             range_initialize(first, last);
         }
 
+        list(std::initializer_list<T> li) {
+            range_initialize(li.begin(), li.end());
+        }
+
         list(const list<T, Alloc>& x) {
             range_initialize(x.begin(), x.end());
         }
@@ -211,12 +218,12 @@ namespace CCSTL{
 
     template <class T, class Alloc>
     void list<T, Alloc>::insert(iterator position, int n, const T& x) {
-        insert(position, (int)n, x);
+        insert(position, (size_type)n, x);
     }
 
     template <class T, class Alloc>
     void list<T, Alloc>::insert(iterator position, long n, const T& x) {
-        insert(position, (long)n, x);
+        insert(position, (size_type)n, x);
     }
 
     template <class T, class Alloc>
