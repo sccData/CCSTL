@@ -7,7 +7,7 @@
 
 \<algorithm\>、\<deque\>、\<functional\>、\<iterator\>、\<array\>、\<vector\>、\<list\>、\<forward_list\>、\<map\>、\<unordered_map\>、\<memory\>、\<numeric\>、\<queue\>、\<set\>、\<unordered_set\>、\<stack\>和\<utility\>
 
-![stl-1-1](.\pic\stl-1-1.png)
+![stl-1-1](./pic/stl-1-1.png)
 
 最重要的2个是**容器**与**算法**
 
@@ -28,7 +28,7 @@
 
 Iterator traits用以分离class iterators和non-class iterators
 
-![stl-3-3](.\pic\stl-3-3.png)
+![stl-3-3](./pic/stl-3-3.png)
 
 [trait.h](./STL/trait.h)
 
@@ -40,11 +40,11 @@ Iterator traits用以分离class iterators和non-class iterators
 
 * **节点**
 
-![stl-4-3](.\pic\stl-4-3.png)
+![stl-4-3](./pic/stl-4-3.png)
 
 * **迭代器**
 
-![stl-4-4](.\pic\stl-4-4.png)
+![stl-4-4](./pic/stl-4-4.png)
 
 list提供的是Bidirectional Iterators
 
@@ -54,7 +54,7 @@ list提供的是Bidirectional Iterators
 
 SGI list不仅是一个双向链表, 还是一个环状双向链表. 所以它只需要一个指针, 便可完整表现整个链表
 
-![stl-4-5](.\pic\stl-4-5.png)
+![stl-4-5](./pic/stl-4-5.png)
 
 * **list操作的实现**
 
@@ -62,7 +62,7 @@ SGI list不仅是一个双向链表, 还是一个环状双向链表. 所以它�
 
 ##### vector
 
-![stl-4-2](.\pic\stl-4-2.png)
+![stl-4-2](./pic/stl-4-2.png)
 
 * **迭代器**
 
