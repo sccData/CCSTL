@@ -6,13 +6,14 @@
 #define VECTOR_H
 
 #include <memory>
+#include "Allocator.h"
 #include <algorithm>
 #include "iterator.h"
 #include <initializer_list>
 #include "trait.h"
 
 namespace CCSTL{
-    template <class T, class Alloc = std::allocator<T>>
+    template <class T, class Alloc = allocator<T>>
     class vector {
     public:
         typedef T value_type;
@@ -24,18 +25,21 @@ namespace CCSTL{
         typedef const value_type& const_reference;
         typedef size_t size_type;
         typedef ptrdiff_t difference_type;
-    protected:
+    private:
         iterator start;
         iterator finish;
         iterator end_of_storage;
+
+        typedef Alloc dataAllocator;
+
         void insert_aux(iterator position, const T& x);
         void deallocate() {
             if(start)
-                alloc.deallocate(start, end_of_storage-start);
+                dataAllocator::deallocate(start, end_of_storage-start);
         }
         void destroy(iterator start, iterator end) {
             while(start < end)
-                alloc.destroy(start++);
+                dataAllocator::destroy(start++);
         }
         void fill_initialize(size_type n, const T& value) {
             start = allocate_and_fill(n, value);
@@ -43,15 +47,8 @@ namespace CCSTL{
             end_of_storage = finish;
         }
     public:
-        iterator begin() { return start; }
-        const_iterator begin() const { return start; }
-        iterator end() { return finish; }
-        const_iterator end() const { return finish; }
-        size_type size() const { return size_type(end() - begin()); }
-        bool empty() const { return begin() == end(); }
-        reference operator[](size_type n) { return *(begin() + n); }
-        const_reference operator[](size_type n) const { return *(begin() + n); }
 
+        // 构造、复制、析构相关函数
         vector(): start(0), finish(0), end_of_storage(0) {}
         vector(size_type n, const T& value) { fill_initialize(n, value); }
         vector(int n, const T& value) { fill_initialize(n, value); }
@@ -59,21 +56,84 @@ namespace CCSTL{
         vector(std::initializer_list<T> li): start(0), finish(0), end_of_storage(0)
         { range_initialize(li.begin(), li.end(), iterator_category(li.begin())); }
         explicit vector(size_type n) { fill_initialize(n, T()); }
-
         template <class InputIterator>
-        vector(InputIterator first, InputIterator last): start(0), finish(0), end_of_storage(0)
-        {
+        vector(InputIterator first, InputIterator last): start(0), finish(0), end_of_storage(0) {
             range_initialize(first, last, iterator_category(first));
         }
+        vector(const vector& v) {
+            allocate_and_copy(v.begin(), v.end());
+        }
+        vector(vector&& v) {
+            start = v.start;
+            finish = v.finish;
+            end_of_storage = v.end_of_storage;
+            v.start = v.finish = v.end_of_storage = 0;
+        }
 
+        vector& operator=(const vector& v) {
+            if(this != &v) {
+                allocate_and_copy(v.begin(), v.end());
+            }
+
+            return *this;
+        }
+
+        vector& operator=(vector&& v) {
+            if(this != &v) {
+                destroy(start, finish);
+                deallocate();
+                start = v.start;
+                finish = v.finish;
+                end_of_storage = v.end_of_storage;
+                v.start = v.finish = v.end_of_storage = 0;
+            }
+
+            return *this;
+        }
         ~vector() {
             destroy(start, finish);
             deallocate();
         }
 
+        // 比较操作
+        bool operator==(const vector& v) const;
+        bool operator!=(const vector& v) const;
+
+        // 迭代器相关
+        iterator begin() { return start; }
+        const_iterator begin() const { return start; }
+        iterator end() { return finish; }
+        const_iterator end() const { return finish; }
+
+        // 与容量相关
+        size_type size() const { return size_type(end() - begin()); }
+        bool empty() const { return begin() == end(); }
+        difference_type capacity() const { return end_of_storage - first; }
+        size_type max_size() const { return size_type(-1) / sizeof(T); }
+        // 访问元素相关
+        reference operator[](size_type n) { return *(begin() + n); }
+        const_reference operator[](size_type n) const { return *(begin() + n); }
+        reference front() { return *(begin()); }
+        reference back() { return *(end() - 1); }
+
+        // 修改容器相关的操作
+        // 清空容器, 销毁容器中的所有对象并使容器的size为0, 但不回收容器已有的空间
+        void clear() {
+            destroy(start, finish);
+            finish = start;
+        }
+
+        void swap(vector& v) {
+            if(this != &v) {
+                std::swap(start, v.start);
+                std::swap(finish, v.finish);
+                std::swap(end_of_storage, v.end_of_storage);
+            }
+        }
+
         void push_back(const T& x) {
             if(finish != end_of_storage) {
-                alloc.construct(finish, x);
+                dataAllocator::construct(finish, x);
                 ++finish;
             } else
                 insert_aux(end(), x);
@@ -81,7 +141,7 @@ namespace CCSTL{
 
         void pop_back() {
             --finish;
-            alloc.destroy(finish);
+            dataAllocator::destroy(finish);
         }
 
         iterator erase(iterator first, iterator last) {
@@ -95,7 +155,7 @@ namespace CCSTL{
             if(position + 1 != end())
                 copy(position + 1, finish, position);
             --finish;
-            alloc.destroy(finish);
+            dataAllocator::destroy(finish);
             return position;
         }
 
@@ -103,7 +163,7 @@ namespace CCSTL{
         iterator insert(iterator position, const T& x) {
             size_type n = position - begin();
             if(finish != end_of_storage && position == end()) {
-                alloc.construct(finish, x);
+                dataAllocator::construct(finish, x);
                 ++finish;
             } else 
                 insert_aux(position, x);
@@ -120,11 +180,17 @@ namespace CCSTL{
         void insert(iterator position, int n, const T& x);
     protected:
         iterator allocate_and_fill(size_type n, const T& x) {
-            iterator result = alloc.allocate(n);
-            uninitialized_fill_n(result, n, x);
+            iterator result = dataAllocator::allocate(n);
+            std::uninitialized_fill_n(result, n, x);
             return result;
         }
-
+        template <class InputIterator>
+        void allocate_and_copy(InputIterator first, InputIterator last) {
+            start = dataAllocator::allocate(last - first);
+            finish = std::uninitialized_copy(first, last, start);
+            end_of_storage = finish;
+        }
+ 
         template <class InputIterator>
         void range_initialize(InputIterator first, InputIterator last, input_iterator_tag) {
             for(; first != last; ++first) {
@@ -135,16 +201,13 @@ namespace CCSTL{
         template <class InputIterator>
         void range_insert(iterator pos, InputIterator first, InputIterator last,
                           input_iterator_tag);
-
-    private:
-        Alloc alloc;
     };
 
     template <class T, class Alloc>
     void vector<T, Alloc>::insert_aux(iterator position, const T& x) {
         // 还有备用空间
         if(finish != end_of_storage) {
-            a.construct(finish, *(finish-1));
+            dataAllocator::construct(finish, *(finish-1));
             ++finish;
             T x_copy = x;
             std::copy_backward(position, finish-2, finish-1);
@@ -152,16 +215,16 @@ namespace CCSTL{
         } else { // 无备用空间
             const size_type old_size = size();
             const size_type len = old_size != 0 ? 2*old_size:1;
-            iterator new_start = alloc.allocate(len);
+            iterator new_start = dataAllocator::allocate(len);
             iterator new_finish = new_start;
             try {
                 new_finish = std::uninitialized_copy(start, position, new_start);
-                a.construct(new_finish, x);
+                dataAllocator::construct(new_finish, x);
                 ++new_finish;
                 new_finish = std::uninitialized_copy(position, finish, new_finish);
             } catch(...) {
                 destroy(new_start, new_finish);
-                a.deallocate(new_start, len);
+                dataAllocator::deallocate(new_start, len);
                 throw;
             }
 
@@ -202,7 +265,7 @@ namespace CCSTL{
             } else {
                 const size_type old_size = size();
                 const size_type len = old_size + max(old_size, n);
-                iterator new_start = alloc.allocate(len);
+                iterator new_start = dataAllocator::allocate(len);
                 iterator new_finish = new_start;
                 try {
                     new_finish = uninitialized_copy(start, position, new_start);
@@ -210,7 +273,7 @@ namespace CCSTL{
                     new_finish = uninitialized_copy(position, finish, new_finish);
                 } catch(...) {
                     destroy(new_start, new_finish);
-                    a.deallocate(new_start, len);
+                    dataAllocator::deallocate(new_start, len);
                     throw;
                 }
 
@@ -235,6 +298,32 @@ namespace CCSTL{
             ++pos;
         }
     }
+
+    template <class T, class Alloc>
+    void insert(iterator position, const_iterator first, const_iterator last) {
+        range_insert(position, first, last, iterator_category(first));
+    }
+
+    template <class T, class Alloc>
+    bool vector<T, Alloc>::operator ==(const vector& v) const {
+        if(size() != v.size())
+            return false;
+        else {
+            auto p1 = start;
+            auto p2 = v.start;
+            for(; p1 != finish; ++p1) {
+                if(*p1 != *p2)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    template <class T, class Alloc>
+    bool vector<T, Alloc>::operator !=(const vector& v) const {
+        return !(*this == v);
+    } 
 }
 
 #endif //DEMO2_VECTOR_H
