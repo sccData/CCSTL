@@ -18,6 +18,12 @@
 * **适配器**(Adapters)
 * **防函数**(Functors)
 
+#### 分配器(Allocators)
+
+----
+
+[具体介绍](https://github.com/sccData/MemPool)
+
 #### 迭代器(Iterators)
 
 ---
