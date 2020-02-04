@@ -8,9 +8,9 @@
 #include <memory>
 #include "Allocator.h"
 #include <algorithm>
-#include "iterator.h"
+#include "Iterator.h"
 #include <initializer_list>
-#include "trait.h"
+#include "Trait.h"
 
 namespace CCSTL{
     template <class T, class Alloc = allocator<T>>
@@ -123,6 +123,15 @@ namespace CCSTL{
             finish = start;
         }
 
+        void resize(size_type new_size, const T& x) {
+            if(new_size < size())
+                erase(begin() + new_size, end());
+            else
+                insert(end(), new_size - size(), x);
+        }
+
+        void resize(size_type new_size) { resize(new_size, T()); }
+
         void swap(vector& v) {
             if(this != &v) {
                 std::swap(start, v.start);
@@ -153,7 +162,7 @@ namespace CCSTL{
 
         iterator erase(iterator position) {
             if(position + 1 != end())
-                copy(position + 1, finish, position);
+                std::copy(position + 1, finish, position);
             --finish;
             dataAllocator::destroy(finish);
             return position;
@@ -175,10 +184,9 @@ namespace CCSTL{
             range_insert(position, first, last, iterator_category(first));
         }
 
-        void insert(iterator position, const_iterator first, const_iterator last);
         void insert(iterator position, size_type n, const T& x);
         void insert(iterator position, int n, const T& x);
-    protected:
+    private:
         iterator allocate_and_fill(size_type n, const T& x) {
             iterator result = dataAllocator::allocate(n);
             std::uninitialized_fill_n(result, n, x);
@@ -249,7 +257,7 @@ namespace CCSTL{
                 iterator old_finish = finish;
                 // 插入点之后的现有元素个数"大于"新增元素个数
                 if(elems_after > n) {
-                    uninitialized_copy(finish - n, finish, old_finish);
+                    std::uninitialized_copy(finish - n, finish, old_finish);
                     finish += n;
                     std::copy_backward(position, old_finish - n, old_finish);
                     finish += elems_after;
@@ -258,19 +266,19 @@ namespace CCSTL{
                 // 插入点之后的现有元素个数"小于等于"新增元素个数
                     std::uninitialized_fill_n(finish, n - elems_after, x_copy);
                     finish += n - elems_after;
-                    uninitialized_copy(position, old_finish, finish);
+                    std::uninitialized_copy(position, old_finish, finish);
                     finish += elems_after;
-                    fill(position, old_finish, x_copy);
+                    std::fill(position, old_finish, x_copy);
                 }
             } else {
                 const size_type old_size = size();
-                const size_type len = old_size + max(old_size, n);
+                const size_type len = old_size + std::max(old_size, n);
                 iterator new_start = dataAllocator::allocate(len);
                 iterator new_finish = new_start;
                 try {
-                    new_finish = uninitialized_copy(start, position, new_start);
-                    new_finish = uninitialized_fill_n(new_finish, n, x);
-                    new_finish = uninitialized_copy(position, finish, new_finish);
+                    new_finish = std::uninitialized_copy(start, position, new_start);
+                    new_finish = std::uninitialized_fill_n(new_finish, n, x);
+                    new_finish = std::uninitialized_copy(position, finish, new_finish);
                 } catch(...) {
                     destroy(new_start, new_finish);
                     dataAllocator::deallocate(new_start, len);
@@ -299,10 +307,6 @@ namespace CCSTL{
         }
     }
 
-    template <class T, class Alloc>
-    void insert(iterator position, const_iterator first, const_iterator last) {
-        range_insert(position, first, last, iterator_category(first));
-    }
 
     template <class T, class Alloc>
     bool vector<T, Alloc>::operator ==(const vector& v) const {

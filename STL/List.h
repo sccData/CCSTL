@@ -1,7 +1,7 @@
 #ifndef LIST_H
 #define LIST_H
-#include "iterator.h"
-#include "trait.h"
+#include "Allocator.h"
+#include "Trait.h"
 #include <initializer_list>
 #include <memory>
 namespace CCSTL{
@@ -59,11 +59,11 @@ namespace CCSTL{
         pointer operator->() const { return &(operator*()); }
     };
 
-    template <class T, class Alloc = std::allocator<T>>
+    template <class T, class Alloc = allocator<T>>
     class list {
-    protected:
+    private:
         typedef list_node<T> list_node;
-        typedef std::allocator<list_node> list_node_allocator;
+        typedef allocator<list_node> list_node_allocator;
     public:
         typedef T value_type;
         typedef value_type* pointer;
@@ -73,20 +73,20 @@ namespace CCSTL{
         typedef list_node* link_type;
         typedef size_t size_type;
         typedef ptrdiff_t difference_type;
-    protected:
-        link_type get_node() { return alloc.allocate(1); }
-        void put_node(link_type p) { alloc.deallocate(p, 1); }
+    private:
+        link_type get_node() { return list_node_allocator::allocate(1); }
+        void put_node(link_type p) { list_node_allocator::deallocate(p, 1); }
         link_type create_node(const T& x) {
             link_type p = get_node();
-            alloc.construct(p, x);
+            list_node_allocator::construct(p, x);
             return p;
         }
 
         void destroy_node(link_type p) {
-            alloc.destroy(p);
+            list_node_allocator::destroy(p);
             put_node(p);
         }
-    protected:
+    private:
         void empty_initialize() {
             node = get_node();
             node->next = node;
@@ -107,7 +107,7 @@ namespace CCSTL{
     public:
         typedef list_iterator<T> iterator;
         typedef list_iterator<const T> const_iterator;
-    protected:
+    private:
         void transfer(iterator position, iterator first, iterator last) {
             if(position != last) {
                 (*((*last.node).prev)).next = position.node;
@@ -195,10 +195,8 @@ namespace CCSTL{
                 transfer(position, first, last);
         }
 
-    protected:
-        link_type node;
     private:
-        list_node_allocator alloc;
+        link_type node;
     };
 
     template <class T, class Alloc>
